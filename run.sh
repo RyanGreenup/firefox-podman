@@ -21,14 +21,15 @@ if [ "${1:-}" == "-h" ] ||  [ "${1:-}" == "--help"  ]; then
 fi
 
 
-if [ -n "${1+1}" ]; then
-    firefox_command="firefox --profile /home/${UNAME}/.mozilla/firefox/main_profile --new-instance"
-elif [ "${1:-}" == "new" ]; then
+
+if [ "${1:-}" == "new" ]; then
     firefox_command="firefox --ProfileManager --new-instance"
 elif [ "${1:-}" == "sh" ]; then
     firefox_command="/bin/sh"
-else
+elif [ -n "${1+1}" ]; then
     firefox_command="firefox --profile ${1} --new-instance"
+else
+    firefox_command="firefox --profile /home/${UNAME}/.mozilla/firefox/main_profile --new-instance"
 fi
 
 
