@@ -132,7 +132,7 @@ def runn(
         opts += ["-e", "DISPLAY"]
         opts += ["-e", "XAUTHORITY"]
         opts += vol("/tmp/.X11-unix")
-        opts += vol(f"/.Xauthority", from_home=True)
+        opts += vol("/.Xauthority", from_home=True)
         opts += vol_env("XAUTHORITY")
     # Sound with Pulse
     opts += vol("/dev/dri:/dev/dri")
