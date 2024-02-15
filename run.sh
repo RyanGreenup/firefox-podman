@@ -11,6 +11,28 @@ if [ "podman" == "${CONTAINER}" ]; then
     USER_NS="--userns=keep-id"
 fi
 
+
+if [ "${1:-}" == "-h" ] ||  [ "${1:-}" == "--help"  ]; then
+    echo "First argument should be the path to a directory that will be the home directory for this container"
+    echo "That directory must have a firefox profile at .mozilla/firefox/main_profile"
+    echo ""
+    echo "To create one there run \`firefox --ProfileManager\` to create one"
+    exit 0
+fi
+
+
+if [ -n "${1+1}" ]; then
+    firefox_command="firefox --profile /home/${UNAME}/.mozilla/firefox/main_profile --new-instance"
+elif [ "${1:-}" == "new" ]; then
+    firefox_command="firefox --ProfileManager --new-instance"
+elif [ "${1:-}" == "sh" ]; then
+    firefox_command="/bin/sh"
+else
+    firefox_command="firefox --profile ${1} --new-instance"
+fi
+
+
+
 # Mount the Xauthority file if it exists
 home_xauth="${HOME}/.Xauthority"
 if [ -f ${home_xauth}  ]; then
@@ -36,21 +58,6 @@ if [ -n "${XDG_RUNTIME_DIR+1}" ]; then
 fi
 
 
-if [ "${1:-}" == "-h" ] ||  [ "${1:-}" == "--help"  ]; then
-    echo "First argument should be the path to a directory that will be the home directory for this container"
-    echo "That directory must have a firefox profile at .mozilla/firefox/main_profile"
-    echo ""
-    echo "To create one there run \`firefox --ProfileManager\` to create one"
-    exit 0
-fi
-
-if [ "${1:-}" == "new" ]; then
-    firefox_command="firefox --ProfileManager --new-instance"
-elif [ "${1:-}" == "sh" ]; then
-    firefox_command="/bin/sh"
-else
-    firefox_command="firefox --profile /home/${UNAME}/.mozilla/firefox/main_profile --new-instance"
-fi
 
 
 # Note that -e env var passthrough allows unset variables

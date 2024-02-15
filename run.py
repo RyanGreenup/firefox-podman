@@ -31,20 +31,15 @@ def build(name: str, engine: str):
 
 
 @cli.command()
-@click.option("--image_name", default="firefox", help="The Image to run")
 @click.option(
-    "--container_name", default=None, help="The name of the container to build"
-)
-@click.option("--engine", default="podman", help="The container engine to use")
+    "--home_dir",
+    default="f{HOME}/.local/share/containerized_apps/firefox-arkenfox",
+    help="The path to a directory that will act as Home for the container. This directory should contain a firefox profile at ~/.mozilla/firefox/main_profile, if it does not use `firefox --ProfileManager` to create one, this is bound to the `new` command in this cli.",)
 @click.option(
-    "--rm",
-    default=True,
-    help="Remove the container after running by appending --rm to podman/docker",
-)
-@click.option(
-    "--profile",
-    default=".mozilla/firefox/main_profile",
-    help="The relative path from home to the profile directory",
+    "--shell",
+    is_flag=True,
+    default=False,
+    help="Start the Firefox Profile Manager to create a new profile, The new profile should be called main_profile if it is to be auto-started",
 )
 @click.option(
     "--new",
@@ -52,21 +47,18 @@ def build(name: str, engine: str):
     default=False,
     help="Start the Firefox Profile Manager to create a new profile, The new profile should be called main_profile if it is to be auto-started",
 )
-@click.option(
-    "--shell",
-    is_flag=True,
-    default=False,
-    help="Start a Shell inside the container",
-)
-def run(image_name: str, engine: str, container_name: str, rm: bool, profile: str, new: bool, shell: bool):
+def run(new: bool, shell: bool, home_dir: str):
     """Run the firefox image as a container"""
     if new:
         sh(["./run.sh", "new"])
     elif shell:
         sh(["./run.sh", "sh"])
     else:
-        sh(["./run.sh"])
+        sh(["./run.sh", home_dir])
 
+
+# @click.option("--engine", default="podman", help="The container engine to use")
+# def run(image_name: str, engine: str, container_name: str, rm: bool, home_dir: str, new: bool, shell: bool):
 
 def get_os() -> str | None:
     try:
