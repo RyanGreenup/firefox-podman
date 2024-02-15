@@ -237,6 +237,29 @@ def is_wayland() -> bool:
         return False
 
 
+@cli.command()
+def install():
+    target = f"{HOME}/.local/bin/firefox-podman"
+    # Create a symlink
+    if os.path.exists(target):
+        print(f"A file already exists at {target}")
+        print("Please remove it and try again")
+    else:
+        os.symlink(os.path.realpath(__file__), target)
+        print(f"Installed firefox to {target}")
+
+
+@cli.command()
+def uninstall():
+    target = f"{HOME}/.local/bin/firefox-podman"
+    # Create a symlink
+    if not os.path.exists(target):
+        print(f"No symlink found to remove, looking for:\n{target}")
+    else:
+        os.remove(target)
+        print(f"Removed {target}")
+
+
 if __name__ == "__main__":
     cli()
 
