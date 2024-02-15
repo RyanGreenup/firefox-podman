@@ -180,7 +180,6 @@ def is_wayland() -> bool:
     """
 
     # Wayland requires the XDG_RUNIME_DIR to be mounted
-    return False
     if os.getenv("XDG_RUNTIME_DIR") is not None:
         return os.getenv("XDG_SESSION_TYPE") == "wayland"
     else:
