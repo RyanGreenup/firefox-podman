@@ -32,8 +32,6 @@ else
     firefox_command="firefox --profile /home/${UNAME}/.mozilla/firefox/main_profile --new-instance"
 fi
 
-
-
 # Mount the Xauthority file if it exists
 home_xauth="${HOME}/.Xauthority"
 if [ -f ${home_xauth}  ]; then

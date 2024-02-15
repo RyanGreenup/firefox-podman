@@ -38,7 +38,7 @@ def build(name: str, engine: str):
 @cli.command()
 @click.option(
     "--home_dir",
-    default="f{HOME}/.local/share/containerized_apps/firefox-arkenfox",
+    default=f"{HOME}/.local/share/containerized_apps/firefox-arkenfox",
     help="The path to a directory that will act as Home for the container. This directory should contain a firefox profile at ~/.mozilla/firefox/main_profile, if it does not use `firefox --ProfileManager` to create one, this is bound to the `new` command in this cli.",
 )
 @click.option(
@@ -79,30 +79,44 @@ def run(new: bool, shell: bool, home_dir: str):
     default=".mozilla/firefox/main_profile",
     help="The relative path from home to the profile directory",
 )
-def runn(image_name: str, engine: str, container_name: str, rm: bool, profile: str):
+@click.option(
+    "--home_dir",
+    default=f"{HOME}/.local/share/containerized_apps/firefox-arkenfox",
+    help=(
+        "The path to a directory for the containers $HOME.\n"
+        "This should contain a firefox profile, "
+        "by default: `~/.mozilla/firefox/main_profile`. "
+        "One can be created using `firefox --ProfileManager` which is "
+        "bound to the `new` command by default"
+    ),
+)
+def runn(
+    image_name: str,
+    engine: str,
+    container_name: str,
+    rm: bool,
+    profile: str,
+    home_dir: str,
+):
     """Run the firefox image as a container"""
-
-    #    if not is_wayland():
     cmd = [engine, "run"]
-    opts = ["-t", "-i"]
+    opts = ["-i", "-t"]
     opts += ["--user", f"{str(os.getuid())}:{str(os.getgid())}"]
     if rm:
         opts += ["--rm"]
     if engine == "podman":
         opts.append("--userns=keep-id")
-        # TODO not sure about this (--user=1000:1000)
-        # opts += ["--user", f"{os.getuid()}:{os.getgid()}"]
-        # opts.append("--user=1000:1000")
         image_name = f"localhost/{image_name}"
     if container_name is not None:
         opts += ["--name", container_name]
 
     opts += ["-w", f"/home/{UNAME}"]
     # User Files
-    opts += [
-        "-v",
-        f"{HOME}/.local/share/containerized_apps/firefox-arkenfox-alpine:/home/{UNAME}:Z",
-    ]
+    # TODO does the whole home need to be synced?
+    # Only files are ~/.cache and ~/.mozilla
+    # TODO this needs to be dynamic
+    # TODO need profile name and need homedir name
+    opts += ["-v", f"{home_dir}:{UHOME}:Z"]
     opts += ["-v", f"{HOME}/Downloads:/home/{UNAME}/Downloads:Z"]
     # SELinux
     opts += ["--security-opt", "label=type:container_runtime_t"]
@@ -134,8 +148,7 @@ def runn(image_name: str, engine: str, container_name: str, rm: bool, profile: s
     cmd += opts
     cmd += [f"{image_name}"]
     # cmd += ["/bin/sh"]
-    cmd += ["firefox", "--profile",
-            f"/home/{UNAME}/{profile}", "--new-instance"]
+    cmd += ["firefox", "--profile", f"/home/{UNAME}/{profile}", "--new-instance"]
     print(" ".join(cmd))
     # cmd = ["podman", "run", "-it", "--rm", "localhost/firefox", "/bin/sh"]
     sh(cmd)
@@ -169,8 +182,7 @@ def vol_env(env: str) -> list[str]:
 
 def get_os() -> str | None:
     try:
-        uname_output = run(["uname"], check=True,
-                           stdout=PIPE).stdout.decode().strip()
+        uname_output = run(["uname"], check=True, stdout=PIPE).stdout.decode().strip()
     except FileNotFoundError:
         print("uname command not found in path", file=sys.stderr)
         return None
