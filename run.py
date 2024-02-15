@@ -25,7 +25,9 @@ def cli():
 
 @cli.command()
 @click.option("--name", default="firefox", help="The name for the built firefox image")
-@click.option("--engine", default="podman", help="The container engine to use")
+@click.option(
+    "--engine", default="podman", help="The container engine to use", show_default=True
+)
 def build(name: str, engine: str):
     """Build a Firefox Image from the Dockerfile."""
     # Check if the Dockerfile exists in the current directory
@@ -49,6 +51,7 @@ def build(name: str, engine: str):
         "One can be created using `firefox --ProfileManager` which is "
         "bound to the `new` command by default"
     ),
+    show_default=True,
 )
 @click.option(
     "--shell",
@@ -73,20 +76,32 @@ def run_wrapper(new: bool, shell: bool, home_dir: str):
 
 
 @cli.command()
-@click.option("--image_name", default="localhost/firefox", help="The Image to run")
 @click.option(
-    "--container_name", default=None, help="The name of the container to build"
+    "--image_name",
+    default="localhost/firefox",
+    help="The Image to run",
+    show_default=True,
 )
-@click.option("--engine", default="podman", help="The container engine to use")
+@click.option(
+    "--container_name",
+    default=None,
+    help="The name of the container to build",
+    show_default=True,
+)
+@click.option(
+    "--engine", default="podman", help="The container engine to use", show_default=True
+)
 @click.option(
     "--rm",
     default=True,
     help="Remove the container after running by appending --rm to podman/docker",
 )
 @click.option(
+    "-p",
     "--profile",
     default="./data/profiles/arkenfox",
     help="The relative path from home to the profile directory",
+    show_default=True,
 )
 @click.option(
     "--shell",
