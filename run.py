@@ -6,8 +6,8 @@ from subprocess import PIPE
 from subprocess import run as sh
 import click
 
-# TODO build command needs to take UID and GID
-
+UNAME = "user"
+UHOME = "/home/user"
 HOME = os.getenv("HOME")
 assert (
     HOME is not None
@@ -27,7 +27,10 @@ def build(name: str, engine: str):
     """Build a Firefox Image from the Dockerfile."""
     # Check if the Dockerfile exists in the current directory
     if os.path.exists("./Dockerfile"):
-        sh([engine, "build", "--layers", "-t", name, "."])
+        if engine == "podman":
+            sh([engine, "build", "--layers", "-t", name, "."])
+        else:
+            sh([engine, "build", "-t", name, "."])
     else:
         print("Please Run this script in the directory of the Dockerfile")
 
@@ -78,12 +81,11 @@ def run(new: bool, shell: bool, home_dir: str):
 )
 def runn(image_name: str, engine: str, container_name: str, rm: bool, profile: str):
     """Run the firefox image as a container"""
-    UNAME = "user"
 
     #    if not is_wayland():
     cmd = [engine, "run"]
     opts = ["-t", "-i"]
-    opts += ["--user", "1000:1000"]
+    opts += ["--user", f"{str(os.getuid())}:{str(os.getgid())}"]
     if rm:
         opts += ["--rm"]
     if engine == "podman":
@@ -110,46 +112,51 @@ def runn(image_name: str, engine: str, container_name: str, rm: bool, profile: s
     if is_wayland():
         opts += ["-e", "MOZ_ENABLE_WAYLAND=1"]
         opts += ["-e", "WAYLAND_DISPLAY"]
+        opts += ["-e", "XDG_RUNTIME_DIR"]
+        opts += vol_env("XDG_RUNTIME_DIR")  # [fn_1]
     else:
         opts += ["-e", "DISPLAY"]
         opts += ["-e", "XAUTHORITY"]
-        tmp_x11_unix = "/tmp/.X11-unix"
-        if os.path.exists(tmp_x11_unix):
-            opts += ["-v", f"{tmp_x11_unix}:{tmp_x11_unix}"]
-        if (xauth_file := os.getenv("XAUTHORITY")) is not None:
-            opts += ["-v", f"{xauth_file}:{xauth_file}"]
-        if os.path.exists(f"{HOME}/.Xauthority"):
-            opts += ["-v", f"{HOME}/.Xauthority:/home/{UNAME}/.Xauthority"]
-        else:
-            if get_os == "Linux" and not is_wayland():
-                print(f"Warning: {HOME}/.Xauthority file not found!", file=sys.stderr)
+        opts += vol("/tmp/.X11-unix")
+        opts += vol(f"/.Xauthority", from_home=True)
+        opts += vol_env("XAUTHORITY")
     # Sound with Pulse
-    opts += ["-v", "/dev/dri:/dev/dri"]
-    opts += ["-v", f"{HOME}/.config/pulse/cookie:/home/{UNAME}/.config/pulse/cookie"]
-    opts += ["-v", "/etc/machine-id:/etc/machine-id"]
-    if (UUID := os.getenv("UUID")) is not None:
-        opts += ["-v", f"/run/user/{UUID}/pulse:/run/user/{UUID}/pulse"]
-    opts += ["-v", "/var/lib/dbus:/var/lib/dbus"]
-    opts += ["--device", "/dev/snd"]
+    opts += vol("/dev/dri:/dev/dri")
+    opts += vol("/.config/pulse/cookie", from_home=True)
+    opts += vol("/etc/machine-id")
+    opts += vol_env("UUID")
+    opts += vol("/var/lib/dbus")
+    opts += dev("/dev/snd")
     if (XDG_RUNTIME_DIR := os.getenv("XDG_RUNTIME_DIR")) is not None:
         opts += ["-e", f"PULSE_SERVER=unix:{XDG_RUNTIME_DIR}/pulse/native"]
-        opts += ["-v", f"{XDG_RUNTIME_DIR}/pulse/native:{XDG_RUNTIME_DIR}/pulse/native"]
-        opts += ["-e", "XDG_RUNTIME_DIR"]
-        opts += ["-v", f"{XDG_RUNTIME_DIR}:{XDG_RUNTIME_DIR}"]
+        opts += vol(f"{XDG_RUNTIME_DIR}/pulse/native")
 
     cmd += opts
     cmd += [f"{image_name}"]
-    cmd += ["/bin/sh"]
-    # cmd += ["firefox", "--profile", f"/home/{UNAME}/{profile}", "--new-instance"]
+    # cmd += ["/bin/sh"]
+    cmd += ["firefox", "--profile",
+            f"/home/{UNAME}/{profile}", "--new-instance"]
     print(" ".join(cmd))
     # cmd = ["podman", "run", "-it", "--rm", "localhost/firefox", "/bin/sh"]
     sh(cmd)
 
 
-def vol(dir: str) -> list[str]:
-    if os.path.exists(dir):
-        return ["-v", f"{dir}:{dir}"]
+def dev(file: str) -> list[str]:
+    if os.path.exists(file):
+        return ["--device", f"{file}"]
     else:
+        print(f"Warning, not found and Unable to attach: {file}")
+        return []
+
+
+def vol(dir: str, from_home: bool = False) -> list[str]:
+    if os.path.exists(dir):
+        if from_home:
+            return ["-v", f"{HOME}/dir:{UHOME}/dir"]
+        else:
+            return ["-v", f"{dir}:{dir}"]
+    else:
+        print(f"Warning, not found and Unable to mount: {dir}")
         return []
 
 
@@ -162,7 +169,8 @@ def vol_env(env: str) -> list[str]:
 
 def get_os() -> str | None:
     try:
-        uname_output = run(["uname"], check=True, stdout=PIPE).stdout.decode().strip()
+        uname_output = run(["uname"], check=True,
+                           stdout=PIPE).stdout.decode().strip()
     except FileNotFoundError:
         print("uname command not found in path", file=sys.stderr)
         return None
@@ -188,3 +196,9 @@ def is_wayland() -> bool:
 
 if __name__ == "__main__":
     cli()
+
+
+# Footnotes ....................................................................
+
+# [fn_1]:  XDG RUNTIME is only needed specifically by wayland there may be
+#          reasons for or against mounting it otherwise
