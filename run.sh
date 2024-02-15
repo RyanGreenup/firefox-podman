@@ -39,7 +39,7 @@ fi
 # Note that -e env var passthrough allows unset variables
 # so we can include DISPLAY and XDG_RUNTIME_DIR eve if they are not set
 podman run --rm -ti  \
-    --userns=keep-id \
+    ${USER_NS} \
     --user=1000:1000 \
 	--security-opt label=type:container_runtime_t \
     --net=host \
