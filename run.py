@@ -46,9 +46,26 @@ def build(name: str, engine: str):
     default=".mozilla/firefox/main_profile",
     help="The relative path from home to the profile directory",
 )
-def run(image_name: str, engine: str, container_name: str, rm: bool, profile: str):
+@click.option(
+    "--new",
+    is_flag=True,
+    default=False,
+    help="Start the Firefox Profile Manager to create a new profile, The new profile should be called main_profile if it is to be auto-started",
+)
+@click.option(
+    "--shell",
+    is_flag=True,
+    default=False,
+    help="Start a Shell inside the container",
+)
+def run(image_name: str, engine: str, container_name: str, rm: bool, profile: str, new: bool, shell: bool):
     """Run the firefox image as a container"""
-    sh("./run.sh")
+    if new:
+        sh(["./run.sh", "new"])
+    elif shell:
+        sh(["./run.sh", "sh"])
+    else:
+        sh(["./run.sh"])
 
 
 def get_os() -> str | None:
