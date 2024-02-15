@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 import os
 import sys
-import subprocess
+import tempfile
 from subprocess import PIPE
 from subprocess import run as sh
 import click
+
+os.chdir(os.path.realpath(os.path.dirname(__file__)))
 
 UNAME = "user"
 UHOME = "/home/user"
@@ -17,7 +19,8 @@ assert (
 @click.group()
 def cli():
     """Run a firefox container and optionally build it from a Dockerfile."""
-    pass  # We just need to define the group, so we don’t call other commands directly
+    # We just need to define the group, for subcommands
+    pass
 
 
 @cli.command()
@@ -39,7 +42,13 @@ def build(name: str, engine: str):
 @click.option(
     "--home_dir",
     default=f"{HOME}/.local/share/containerized_apps/firefox-arkenfox",
-    help="The path to a directory that will act as Home for the container. This directory should contain a firefox profile at ~/.mozilla/firefox/main_profile, if it does not use `firefox --ProfileManager` to create one, this is bound to the `new` command in this cli.",
+    help=(
+        "The path to a directory for the containers $HOME.\n"
+        "This should contain a firefox profile, "
+        "by default: `~/.mozilla/firefox/main_profile`. "
+        "One can be created using `firefox --ProfileManager` which is "
+        "bound to the `new` command by default"
+    ),
 )
 @click.option(
     "--shell",
@@ -53,8 +62,8 @@ def build(name: str, engine: str):
     default=False,
     help="Start the Firefox Profile Manager to create a new profile, The new profile should be called main_profile if it is to be auto-started",
 )
-def run(new: bool, shell: bool, home_dir: str):
-    """Run the firefox image as a container"""
+def run_wrapper(new: bool, shell: bool, home_dir: str):
+    """Run the firefox image as a container using the ./run.sh"""
     if new:
         sh(["./run.sh", "new"])
     elif shell:
@@ -64,7 +73,7 @@ def run(new: bool, shell: bool, home_dir: str):
 
 
 @cli.command()
-@click.option("--image_name", default="firefox", help="The Image to run")
+@click.option("--image_name", default="localhost/firefox", help="The Image to run")
 @click.option(
     "--container_name", default=None, help="The name of the container to build"
 )
@@ -76,52 +85,48 @@ def run(new: bool, shell: bool, home_dir: str):
 )
 @click.option(
     "--profile",
-    default=".mozilla/firefox/main_profile",
+    default="./data/profiles/arkenfox",
     help="The relative path from home to the profile directory",
 )
 @click.option(
-    "--home_dir",
-    default=f"{HOME}/.local/share/containerized_apps/firefox-arkenfox",
-    help=(
-        "The path to a directory for the containers $HOME.\n"
-        "This should contain a firefox profile, "
-        "by default: `~/.mozilla/firefox/main_profile`. "
-        "One can be created using `firefox --ProfileManager` which is "
-        "bound to the `new` command by default"
-    ),
+    "--shell",
+    is_flag=True,
+    default=False,
+    help="Start a shell instead of Firefox",
 )
-def runn(
+def run(
     image_name: str,
     engine: str,
     container_name: str,
     rm: bool,
     profile: str,
-    home_dir: str,
+    shell: bool,
 ):
     """Run the firefox image as a container"""
     cmd = [engine, "run"]
     opts = ["-i", "-t"]
-    opts += ["--user", f"{str(os.getuid())}:{str(os.getgid())}"]
+    UID = str(os.getuid())
+    GID = str(os.getgid())
+    opts += ["--user", f"{UID}:{GID}"]
     if rm:
         opts += ["--rm"]
     if engine == "podman":
         opts.append("--userns=keep-id")
-        image_name = f"localhost/{image_name}"
     if container_name is not None:
         opts += ["--name", container_name]
 
-    opts += ["-w", f"/home/{UNAME}"]
-    # User Files
-    # TODO does the whole home need to be synced?
-    # Only files are ~/.cache and ~/.mozilla
-    # TODO this needs to be dynamic
-    # TODO need profile name and need homedir name
-    opts += ["-v", f"{home_dir}:{UHOME}:Z"]
-    opts += ["-v", f"{HOME}/Downloads:/home/{UNAME}/Downloads:Z"]
-    # SELinux
-    opts += ["--security-opt", "label=type:container_runtime_t"]
     # Network
     opts += ["--net", "host"]
+    # User Files
+    # TODO I've set UID as 1111 for this home while building
+    #      Then I mount temp home over so it it's writeable by mapped user
+    #      I can't know user UID at build time so this is easy fix
+    opts += ["-w", f"{UHOME}"]
+    opts += ["-v", f"{tempfile.mkdtemp()}:{UHOME}"]
+    opts += ["-v", f"{profile}:{UHOME}/.mozilla/firefox/main_profile"]
+    opts += vol("Downloads", from_home=True)
+    # SELinux
+    opts += ["--security-opt", "label=type:container_runtime_t"]
     # Video
     if is_wayland():
         opts += ["-e", "MOZ_ENABLE_WAYLAND=1"]
@@ -135,7 +140,7 @@ def runn(
         opts += vol("/.Xauthority", from_home=True)
         opts += vol_env("XAUTHORITY")
     # Sound with Pulse
-    opts += vol("/dev/dri:/dev/dri")
+    opts += vol("/dev/dri")
     opts += vol("/.config/pulse/cookie", from_home=True)
     opts += vol("/etc/machine-id")
     opts += vol_env("UUID")
@@ -148,7 +153,15 @@ def runn(
     cmd += opts
     cmd += [f"{image_name}"]
     # cmd += ["/bin/sh"]
-    cmd += ["firefox", "--profile", f"/home/{UNAME}/{profile}", "--new-instance"]
+    if shell:
+        cmd += ["/bin/sh"]
+        sh(cmd)
+    cmd += [
+        "firefox",
+        "--profile",
+        f"/home/{UNAME}/.mozilla/firefox/main_profile",
+        "--new-instance",
+    ]
     print(" ".join(cmd))
     # cmd = ["podman", "run", "-it", "--rm", "localhost/firefox", "/bin/sh"]
     sh(cmd)
@@ -163,14 +176,17 @@ def dev(file: str) -> list[str]:
 
 
 def vol(dir: str, from_home: bool = False) -> list[str]:
-    if os.path.exists(dir):
-        if from_home:
-            return ["-v", f"{HOME}/dir:{UHOME}/dir"]
+    def map(a: str, b: str):
+        if os.path.exists(a):
+            return ["-v", f"{a}:{b}"]
         else:
-            return ["-v", f"{dir}:{dir}"]
+            print(f"Warning, not found and Unable to mount: {a}")
+            return []
+
+    if from_home:
+        return map(f"{HOME}/{dir}", f"{UHOME}/{dir}")
     else:
-        print(f"Warning, not found and Unable to mount: {dir}")
-        return []
+        return map(dir, dir)
 
 
 def vol_env(env: str) -> list[str]:
@@ -182,7 +198,7 @@ def vol_env(env: str) -> list[str]:
 
 def get_os() -> str | None:
     try:
-        uname_output = run(["uname"], check=True, stdout=PIPE).stdout.decode().strip()
+        run_wrapper(["uname"], check=True, stdout=PIPE).stdout.decode().strip()
     except FileNotFoundError:
         print("uname command not found in path", file=sys.stderr)
         return None
@@ -210,7 +226,8 @@ if __name__ == "__main__":
     cli()
 
 
-# Footnotes ....................................................................
+# Footnotes ...................................................................
 
 # [fn_1]:  XDG RUNTIME is only needed specifically by wayland there may be
 #          reasons for or against mounting it otherwise
+# Create temp dir
