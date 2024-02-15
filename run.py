@@ -6,7 +6,7 @@ from subprocess import PIPE
 from subprocess import run as sh
 import click
 
-os.chdir(os.path.realpath(os.path.dirname(__file__)))
+os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
 UNAME = "user"
 UHOME = "/home/user"
