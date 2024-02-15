@@ -1,0 +1,116 @@
+# FROM fedora:latest
+FROM alpine:latest
+
+ARG GROUP_ID=1111
+ARG USER_ID=1111
+
+# Update and install Firefox
+# RUN dnf update -y && dnf install -y firefox
+RUN                                         \
+  apk --no-interactive update            && \
+  apk --no-interactive upgrade           && \
+  apk --no-interactive add firefox          \
+                           mesa             \
+                           mesa-utils       \
+                           mesa-dri-gallium \
+                           libcanberra-gtk3
+
+
+# Install Fonts recommended by wiki
+# <https://wiki.alpinelinux.org/wiki/Fonts>
+RUN apk add --no-interactive        \
+    font-terminus                   \
+    font-inconsolata                \
+    font-dejavu                     \
+    font-noto                       \
+    font-noto-cjk                   \
+    font-awesome                    \
+    font-noto-extra
+
+
+# Install emojis
+RUN apk add --no-interactive     \
+    font-noto-emoji              \
+    font-noto-cjk                \
+    font-noto-cjk-extra          \
+    font-noto-extra
+
+# Install Font Awesome
+RUN apk add --no-interactive   \
+    font-awesome               \
+    font-awesome-brands        \
+    font-awesome-free
+
+# # Install Nerd Fonts
+# RUN apk add --no-interactive     \
+#     font-fira-code-nerd          \
+#     font-fira-mono-nerd          \
+#     font-jetbrains-mono-nerd
+
+
+# Run as a regular user (alpine)
+# NOTE this </home/ryan/Sync/Projects/2024/docker-container-apps/firefox-container/run.sh>
+# has username ff
+# RUN addgroup -S user && adduser -S user -G user
+# Alpine doesn't default to UID 1000
+RUN addgroup -g ${GROUP_ID} user && \
+   adduser -D -u ${USER_ID} -G user user
+
+# If we had shadow, this allows setting the UID to match host user
+# RUN groupadd -g $GROUP_ID ff \
+#     && useradd -u $USER_ID -g $GROUP_ID -G audio,video -m ff \
+#     && chmod ugo+x /entrypoint.sh
+
+# Use the perl script fedora
+# RUN useradd -m user
+
+RUN \
+    apk --no-interactive add alsa-lib alsa-plugins pipewire pipewire-pulse
+
+# Install either pulseaudio or pipwire-pulse (alsa-lib and alsa-plugins not needed)
+RUN \
+    apk --no-interactive add  pipewire pipewire-pulse
+# RUN \
+#     apk --no-interactive add alsa-lib alsa-plugins pulseaudio
+
+
+# COPY ./alpine_packages.sh alpine_packages.sh
+# RUN sh ./alpine_packages.sh
+
+
+RUN apk add alacritty
+
+USER user
+ENV HOME /home/user
+
+# Set wayland
+ENV MOZ_ENABLE_WAYLAND=1
+
+
+# Run firefox
+# CMD ["/usr/bin/firefox", "https://www.youtube.com/watch?v=86ZkbwYi1PI"]
+
+
+
+# Appendix
+# Additional Fonts
+
+# RUN apk add --no-interactive     \
+#     font-fira-code-nerd          \
+#     font-fira-mono-nerd          \
+#     font-jetbrains-mono-nerd     \
+#     font-bakoma-ttf              \
+#     font-monofur-nerd            \
+#     font-cantarell               \
+#     font-dejavu                  \
+#     font-droid                   \
+#     font-freefont                \
+#     font-hack                    \
+#     font-inconsolata             \
+#     font-linux-libertine         \
+#     font-mononoki                \
+#     font-opensans                \
+#     font-tlwg                    \
+#     perl-font-ttf                \
+#     perl-font-ttf-doc
+

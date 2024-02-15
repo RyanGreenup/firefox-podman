@@ -1,0 +1,90 @@
+FROM fedora:latest
+RUN dnf update -y && dnf install -y firefox
+RUN useradd -m user
+# Install things for sound
+# RUN dnf install -y alsa-lib alsa-utils pulseaudio pulseaudio-utils
+
+
+
+# # we'll try installing deps to see if we can get sound coming through
+# RUN dnf install -y \
+#     bash-completion            \
+#     bc                         \
+#     bzip2                      \
+#     curl                       \
+#     diffutils                  \
+#     dnf-plugins-core           \
+#     findutils                  \
+#     glibc-all-langpacks        \
+#     glibc-locale-source        \
+#     gnupg2                     \
+#     gnupg2-smime               \
+#     hostname                   \
+#     iproute                    \
+#     iputils                    \
+#     keyutils                   \
+#     krb5-libs                  \
+#     less                       \
+#     lsof                       \
+#     man-db                     \
+#     man-pages                  \
+#     mtr                        \
+#     ncurses                    \
+#     nss-mdns                   \
+#     openssh-clients            \
+#     pam                        \
+#     passwd                     \
+#     pigz                       \
+#     pinentry                   \
+#     procps-ng                  \
+#     rsync                      \
+#     shadow-utils               \
+#     sudo                       \
+#     tcpdump                    \
+#     time                       \
+#     traceroute                 \
+#     tree                       \
+#     tzdata                     \
+#     unzip                      \
+#     util-linux                 \
+#     vte-profile                \
+#     wget                       \
+#     which                      \
+#     whois                      \
+#     words                      \
+#     xorg-x11-xauth             \
+#     xz                         \
+#     zip                        \
+#     mesa-dri-drivers           \
+#     mesa-vulkan-drivers        \
+#     vulkan
+#
+
+
+
+
+
+
+
+
+USER user
+ENV HOME /home/user
+
+# Set wayland
+ENV MOZ_ENABLE_WAYLAND=1
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Run firefox
+CMD ["/usr/bin/firefox", "https://www.youtube.com/watch?v=86ZkbwYi1PI"]
+
