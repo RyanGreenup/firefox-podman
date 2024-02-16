@@ -1,0 +1,67 @@
+#+title: Containerized Firefox
+
+* Introduction
+
+This runs firefox in a container, this makes it easier to =rsync= the firefox profile between machines because the version will be consistent.
+
+* Usage
+** Initial Setup
+
+1. Clone the repo
+2. Install the dependencies
+   #+begin_src bash
+   pip install click
+   #+end_src
+3. Build the dockerfile
+   #+begin_src bash
+   ./run.py build
+   #+end_src
+4. Make a Directory for the profile
+   #+begin_src bash
+   mkdir -p ./data/profiles/arkenfox
+   #+end_src
+5. Run a shell in the container
+   #+begin_src sh
+   ./run.py run --shell --profile ./data/profiles/arkenfox
+   #+end_src
+6. Create a new profile under =~/.mozilla/firefox/main_profile= using the Profile Manager:
+   #+begin_src sh
+   firefox --ProfileManager
+   #+end_src
+   Then exit the container
+7. Run firefox from the container:
+   #+begin_src sh
+   ./run.py run --profile ./data/profiles/arkenfox
+   #+end_src
+8. Optionally symlink =./run.py= to =~/.local/bin/firefox-podman=:
+   #+begin_src sh
+   ./run.py install
+   # unisntall with
+   # ./run.py uninstall
+   #+end_src
+** Usage thereafter
+#+begin_src sh
+./run.py run --profile ./data/profiles/arkenfox
+#+end_src
+
+* Implementation Notes
+** Wayland
+If the host has ~XDG_SESSION_TYPE=wayland~ and =XDG_USER_DIRS= is defined, firefox will run through wayland and unset the X11 =DISPLAY= variable.
+** Sound
+This uses pipewire pulse to communicate with pipewire on the host.
+** =run.sh=
+A run shell script is included that can be used for debugging
+** Multiple Windows
+Firefox only allows one instance of a profile to run at a time, it is configured to simply attach back to the last running session. This is confusing and not implemented here, instead, create new windows from the running session.
+* Troubleshooting
+I had some grief running VPNs, I had to restart the container, I've since mounted =/etc/resolv.conf= and this should /probably/ fix that.
+* Syncing profiles
+One can use =rsync= or =unison= to syncrhonise profiles. Syncthing is not recommended because the files will change a lot during runtime and this will likely lead to a poor experience. I've used =git= and the experience was pretty good also.
+
+#+begin_src sh
+target="my_other_pc"
+user="username"
+dir="$HOME/Sync-Current-rsync/containerized_applications/share/firefox"
+
+rsync -avh "${dir}/" ${user}@${target}:"${dir}"
+#+end_src
