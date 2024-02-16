@@ -245,7 +245,9 @@ def install():
         print(f"A file already exists at {target}")
         print("Please remove it and try again")
     else:
-        os.symlink(os.path.realpath(__file__), target)
+        file = os.path.abspath(os.path.realpath(__file__))
+        target = os.path.abspath(os.path.realpath(target))
+        os.symlink(file, target)
         print(f"Installed firefox to {target}")
 
 
