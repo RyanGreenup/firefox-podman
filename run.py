@@ -109,6 +109,12 @@ def run_wrapper(new: bool, shell: bool, home_dir: str):
     default=False,
     help="Start a shell instead of Firefox",
 )
+@click.option(
+    "-d", "--detach",
+    is_flag=True,
+    default=False,
+    help="Detach from the container, using `./run.py &` doesn't work",
+)
 def run(
     image_name: str,
     engine: str,
@@ -116,6 +122,7 @@ def run(
     rm: bool,
     profile: str,
     shell: bool,
+    detach: bool
 ):
     """Run the firefox image as a container"""
     cmd = [engine, "run"]
@@ -129,6 +136,7 @@ def run(
         opts.append("--userns=keep-id")
     if container_name is not None:
         opts += ["--name", container_name]
+    opts += ["-d"] if detach else []
 
     # Network
     opts += ["--net", "host"]
@@ -271,3 +279,4 @@ if __name__ == "__main__":
 # [fn_1]:  XDG RUNTIME is only needed specifically by wayland there may be
 #          reasons for or against mounting it otherwise
 # Create temp dir
+
