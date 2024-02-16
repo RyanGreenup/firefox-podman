@@ -140,6 +140,7 @@ def run(
 
     # Network
     opts += ["--net", "host"]
+    opts += vol("/etc/resolv.conf")
     # User Files
     # TODO I've set UID as 1111 for this home while building
     #      Then I mount temp home over so it it's writeable by mapped user
