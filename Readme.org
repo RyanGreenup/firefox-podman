@@ -1,7 +1,7 @@
 #+title: Containerized Firefox
 
 #+begin_quote
-**Please Note: ** This is hosted at https://codeberg.org/ryangreenup/firefox-podman, if you're viewing this on GitHub it is only a mirror. Please use the bug tracker on Codeberg for any issues.
+*Please Note*: This is hosted at https://codeberg.org/ryangreenup/firefox-podman, if you're viewing this on GitHub it is only a mirror. Please use the bug tracker on Codeberg for any issues.
 #+end_quote
 * Introduction
 
