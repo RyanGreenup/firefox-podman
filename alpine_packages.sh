@@ -1,3 +1,5 @@
+# These are what distrobox uses, we don't need them, here for debugging
+
 deps="
     alpine-base
     bash
